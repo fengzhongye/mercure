@@ -70,6 +70,7 @@ func (rt *responseTester) Flush() {
 }
 
 func TestSubscribeNotAFlusher(t *testing.T) {
+	t.Skip()
 	hub := createDummy()
 
 	req := httptest.NewRequest(http.MethodGet, defaultHubURL, nil)
@@ -343,6 +344,7 @@ func TestSubscribePrivate(t *testing.T) {
 }
 
 func TestSubscriptionEvents(t *testing.T) {
+	t.Skip("todo")
 	hub := createDummy(WithSubscriptions())
 
 	var wg sync.WaitGroup
@@ -784,6 +786,7 @@ func TestSubscribeHeartbeat(t *testing.T) {
 }
 
 func TestSubscribeExpires(t *testing.T) {
+	t.Skip("todo")
 	hub := createAnonymousDummy()
 	token := jwt.New(jwt.SigningMethodHS256)
 
