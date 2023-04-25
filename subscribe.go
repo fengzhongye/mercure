@@ -38,7 +38,7 @@ func (rc *responseController) setDefaultWriteDeadline() bool {
 	if err := rc.SetWriteDeadline(rc.end); err != nil {
 		level := zap.DebugLevel
 		if errors.Is(err, http.ErrNotSupported) {
-			level = zap.DPanicLevel
+			level = zap.PanicLevel
 		}
 
 		if c := rc.hub.logger.Check(level, "Error while setting default write deadline"); c != nil {
@@ -55,7 +55,7 @@ func (rc *responseController) flush() bool {
 	if err := rc.Flush(); err != nil {
 		level := zap.DebugLevel
 		if errors.Is(err, http.ErrNotSupported) {
-			level = zap.DPanicLevel
+			level = zap.PanicLevel
 		}
 
 		if c := rc.hub.logger.Check(level, "Unable to flush"); c != nil {
