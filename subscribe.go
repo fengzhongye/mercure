@@ -36,12 +36,11 @@ func (rc *responseController) setDispatchWriteDeadline() bool {
 
 func (rc *responseController) setDefaultWriteDeadline() bool {
 	if err := rc.SetWriteDeadline(rc.end); err != nil {
-		level := zap.DebugLevel
 		if errors.Is(err, http.ErrNotSupported) {
-			level = zap.PanicLevel
+			panic(err)
 		}
 
-		if c := rc.hub.logger.Check(level, "Error while setting default write deadline"); c != nil {
+		if c := rc.hub.logger.Check(zap.InfoLevel, "Error while setting default write deadline"); c != nil {
 			c.Write(zap.Object("subscriber", rc.subscriber), zap.Error(err))
 		}
 
@@ -53,12 +52,11 @@ func (rc *responseController) setDefaultWriteDeadline() bool {
 
 func (rc *responseController) flush() bool {
 	if err := rc.Flush(); err != nil {
-		level := zap.DebugLevel
 		if errors.Is(err, http.ErrNotSupported) {
-			level = zap.PanicLevel
+			panic(err)
 		}
 
-		if c := rc.hub.logger.Check(level, "Unable to flush"); c != nil {
+		if c := rc.hub.logger.Check(zap.InfoLevel, "Unable to flush"); c != nil {
 			c.Write(zap.Object("subscriber", rc.subscriber), zap.Error(err))
 		}
 
