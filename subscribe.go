@@ -76,7 +76,7 @@ func newResponseController(w http.ResponseWriter, h *Hub, s *Subscriber) *respon
 		end = s.Claims.ExpiresAt.Time
 	}
 
-	return &responseController{*http.NewResponseController(w), w, end, h, s}
+	return &responseController{*http.NewResponseController(w), w, end, h, s} // nolint:bodyclose
 }
 
 // SubscribeHandler creates a keep alive connection and sends the events to the subscribers.
@@ -282,11 +282,5 @@ func (h *Hub) dispatchSubscriptionUpdate(s *Subscriber, active bool) {
 			Event:   Event{Data: string(json)},
 		}
 		h.transport.Dispatch(u)
-	}
-}
-
-func assertFlusher(w http.ResponseWriter) {
-	if _, ok := w.(http.Flusher); !ok {
-		panic("http.ResponseWriter must be an instance of http.Flusher")
 	}
 }
