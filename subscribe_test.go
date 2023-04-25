@@ -407,7 +407,6 @@ func TestSubscribePrivate(t *testing.T) {
 }
 
 func TestSubscriptionEvents(t *testing.T) {
-	t.Skip("todo")
 	hub := createDummy(WithSubscriptions())
 
 	var wg sync.WaitGroup
@@ -419,7 +418,7 @@ func TestSubscriptionEvents(t *testing.T) {
 		defer wg.Done()
 		req := httptest.NewRequest(http.MethodGet, defaultHubURL+"?topic=/.well-known/mercure/subscriptions/{topic}/{subscriber}", nil).WithContext(ctx1)
 		req.AddCookie(&http.Cookie{Name: "mercureAuthorization", Value: createDummyAuthorizedJWT(hub, roleSubscriber, []string{"/.well-known/mercure/subscriptions/{topic}/{subscriber}"})})
-		w := httptest.NewRecorder()
+		w := newSubscribeRecorder()
 		hub.SubscribeHandler(w, req)
 
 		resp := w.Result()
@@ -444,7 +443,7 @@ func TestSubscriptionEvents(t *testing.T) {
 		defer wg.Done()
 		req := httptest.NewRequest(http.MethodGet, defaultHubURL+"?topic=/.well-known/mercure/subscriptions/{topicSelector}/{subscriber}", nil).WithContext(ctx2)
 		req.AddCookie(&http.Cookie{Name: "mercureAuthorization", Value: createDummyAuthorizedJWT(hub, roleSubscriber, []string{})})
-		w := httptest.NewRecorder()
+		w := newSubscribeRecorder()
 		hub.SubscribeHandler(w, req)
 
 		resp := w.Result()
@@ -452,7 +451,7 @@ func TestSubscriptionEvents(t *testing.T) {
 		body, _ := io.ReadAll(resp.Body)
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
-		assert.Equal(t, ":\n", string(body))
+		assert.Equal(t, "", string(body))
 	}()
 
 	go func() {
@@ -849,8 +848,7 @@ func TestSubscribeHeartbeat(t *testing.T) {
 }
 
 func TestSubscribeExpires(t *testing.T) {
-	t.Skip("todo")
-	hub := createAnonymousDummy()
+	hub := createAnonymousDummy(WithWriteTimeout(0), WithDispatchTimeout(0), WithHeartbeat(500*time.Millisecond))
 	token := jwt.New(jwt.SigningMethodHS256)
 
 	token.Claims = &claims{
@@ -866,13 +864,14 @@ func TestSubscribeExpires(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, defaultHubURL+"?topic=foo", nil)
 	req.Header.Add("Authorization", "Bearer "+jwt)
 
-	w := httptest.NewRecorder()
+	w := newSubscribeRecorder()
 	hub.SubscribeHandler(w, req)
 
 	resp := w.Result()
 	defer resp.Body.Close()
 
 	assert.Equal(t, 200, resp.StatusCode)
+	assert.True(t, time.Now().After(token.Claims.(*claims).ExpiresAt.Time))
 }
 
 func BenchmarkSubscribe(b *testing.B) {

@@ -23,7 +23,12 @@ func (rc *responseController) setDispatchWriteDeadline() bool {
 		return true
 	}
 
-	if err := rc.SetWriteDeadline(time.Now().Add(rc.hub.dispatchTimeout)); err != nil {
+	deadline := time.Now().Add(rc.hub.dispatchTimeout)
+	if deadline.After(rc.end) {
+		return true
+	}
+
+	if err := rc.SetWriteDeadline(deadline); err != nil {
 		if c := rc.hub.logger.Check(zap.ErrorLevel, "Unable to set dispatch write deadline"); c != nil {
 			c.Write(zap.Object("subscriber", rc.subscriber), zap.Error(err))
 		}
