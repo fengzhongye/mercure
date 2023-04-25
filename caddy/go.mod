@@ -1,6 +1,6 @@
 module github.com/dunglas/mercure/caddy
 
-go 1.19
+go 1.20
 
 replace github.com/dunglas/mercure => ../
 
