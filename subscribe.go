@@ -3,7 +3,6 @@ package mercure
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -88,13 +87,12 @@ func newResponseController(w http.ResponseWriter, h *Hub, s *Subscriber) *respon
 //
 //nolint:funlen,gocognit
 func (h *Hub) SubscribeHandler(w http.ResponseWriter, r *http.Request) {
-	s := h.registerSubscriber(w, r)
+	s, rc := h.registerSubscriber(w, r)
 	if s == nil {
 		return
 	}
 	defer h.shutdown(s)
 
-	rc := newResponseController(w, h, s)
 	rc.setDefaultWriteDeadline()
 
 	var heartbeatTimer *time.Timer
@@ -137,7 +135,7 @@ func (h *Hub) SubscribeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // registerSubscriber initializes the connection.
-func (h *Hub) registerSubscriber(w http.ResponseWriter, r *http.Request) *Subscriber {
+func (h *Hub) registerSubscriber(w http.ResponseWriter, r *http.Request) (*Subscriber, *responseController) {
 	s := NewSubscriber(retrieveLastEventID(r, h.opt, h.logger), h.logger)
 	s.Debug = h.debug
 	s.RemoteAddr = r.RemoteAddr
@@ -155,7 +153,7 @@ func (h *Hub) registerSubscriber(w http.ResponseWriter, r *http.Request) *Subscr
 				c.Write(zap.Object("subscriber", s), zap.Error(err))
 			}
 
-			return nil
+			return nil, nil
 		}
 	}
 
@@ -163,7 +161,7 @@ func (h *Hub) registerSubscriber(w http.ResponseWriter, r *http.Request) *Subscr
 	if len(topics) == 0 {
 		http.Error(w, "Missing \"topic\" parameter.", http.StatusBadRequest)
 
-		return nil
+		return nil, nil
 	}
 	s.SetTopics(topics, privateTopics)
 
@@ -175,21 +173,21 @@ func (h *Hub) registerSubscriber(w http.ResponseWriter, r *http.Request) *Subscr
 			c.Write(zap.Object("subscriber", s), zap.Error(err))
 		}
 
-		return nil
+		return nil, nil
 	}
 
-	sendHeaders(w, s)
+	rc := h.sendHeaders(w, s)
 
 	if c := h.logger.Check(zap.InfoLevel, "New subscriber"); c != nil {
 		c.Write(zap.Object("subscriber", s))
 	}
 	h.metrics.SubscriberConnected(s)
 
-	return s
+	return s, rc
 }
 
 // sendHeaders sends correct HTTP headers to create a keep-alive connection.
-func sendHeaders(w http.ResponseWriter, s *Subscriber) {
+func (h *Hub) sendHeaders(w http.ResponseWriter, s *Subscriber) *responseController {
 	// Keep alive, useful only for HTTP 1 clients https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Keep-Alive
 	w.Header().Set("Connection", "keep-alive")
 
@@ -210,8 +208,12 @@ func sendHeaders(w http.ResponseWriter, s *Subscriber) {
 
 	// Write a comment in the body
 	// Go currently doesn't provide a better way to flush the headers
-	fmt.Fprint(w, ":\n")
-	w.(http.Flusher).Flush()
+	w.Write([]byte{':', '\n'})
+
+	rc := newResponseController(w, h, s)
+	rc.flush()
+
+	return rc
 }
 
 // retrieveLastEventID extracts the Last-Event-ID from the corresponding HTTP header with a fallback on the query parameter.
